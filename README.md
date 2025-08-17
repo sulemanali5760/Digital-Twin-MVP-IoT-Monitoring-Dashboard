@@ -25,14 +25,12 @@ Industrial systems often suffer downtime due to **late detection of issues** lik
 - Apply **basic anomaly detection** to flag issues  
 - Build a **Streamlit dashboard** for real-time visualization  
 
-## 🏗️ Architecture
-```mermaid
-graph TD
-  A[ESP32 + Sensors] -->|Data via Serial/MQTT| B[Python Ingest Pipeline]
-  B --> C[Preprocessing & Logging]
-  C --> D[Anomaly Detection (scikit-learn)]
-  D --> E[Streamlit Dashboard]
-```
+flowchart LR
+    A[IoT Sensors<br>(Temp, Vibration)] --> B[ESP32<br>Data Logger]
+    B --> C[Python Ingestion<br>(Serial/MQTT)]
+    C --> D[Anomaly Detection<br>(Python, Pandas)]
+    D --> E[Dashboard<br>(Streamlit)]
+
 
 ## 🛠️ Tech Stack
 - **Hardware**: ESP32 microcontroller + DHT11/Current/Vibration sensors  
