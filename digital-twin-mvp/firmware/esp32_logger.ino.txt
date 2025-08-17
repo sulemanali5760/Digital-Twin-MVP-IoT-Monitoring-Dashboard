@@ -1,0 +1,74 @@
+// firmware/esp32_logger.ino
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+// ---- CONFIG ----
+const char* WIFI_SSID     = "YOUR_WIFI";
+const char* WIFI_PASSWORD = "YOUR_PASS";
+const char* MQTT_HOST     = "192.168.1.100";   // broker IP
+const uint16_t MQTT_PORT  = 1883;
+const char* MQTT_TOPIC    = "plant/cnc01/telemetry";
+
+// Pins (replace with your sensors)
+const int PIN_TEMP = 34;       // analog
+const int PIN_VIB  = 35;       // analog
+const int PIN_CURR = 32;       // analog
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+unsigned long lastPub = 0;
+
+float readTempC() {
+  // Replace with real sensor code e.g., using a library
+  int raw = analogRead(PIN_TEMP);
+  return 20.0 + (raw % 200) / 10.0;  // mock 20..40 °C
+}
+float readVibration() {
+  int raw = analogRead(PIN_VIB);
+  return (raw % 1000) / 1000.0;      // 0.0..1.0 g (mock)
+}
+float readCurrentA() {
+  int raw = analogRead(PIN_CURR);
+  return 2.0 + (raw % 300) / 100.0;  // 2..5 A (mock)
+}
+
+void connectWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) { delay(500); }
+}
+
+void connectMQTT() {
+  client.setServer(MQTT_HOST, MQTT_PORT);
+  while (!client.connected()) {
+    client.connect("esp32-cnc01");
+    delay(500);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  connectWiFi();
+  connectMQTT();
+  analogReadResolution(12);
+}
+
+void loop() {
+  if (!client.connected()) connectMQTT();
+  client.loop();
+
+  unsigned long now = millis();
+  if (now - lastPub > 1000) { // 1 Hz
+    lastPub = now;
+    float t = readTempC();
+    float v = readVibration();
+    float a = readCurrentA();
+
+    char payload[200];
+    snprintf(payload, sizeof(payload),
+      "{\"ts\":%lu,\"temp_c\":%.2f,\"vib_g\":%.3f,\"curr_a\":%.2f}",
+      now, t, v, a);
+    client.publish(MQTT_TOPIC, payload);
+  }
+}
